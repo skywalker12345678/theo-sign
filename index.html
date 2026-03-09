@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>THEO Pools — Sign Transaction</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0b132b;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1a2744;
+      border: 1px solid #2a3f6f;
+      border-radius: 16px;
+      padding: 40px 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fca311;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #8899bb;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    .status-box {
+      background: #0d1e3d;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #aabbdd;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-backpack {
+      background: linear-gradient(135deg, #e33de2, #7c3aed);
+      color: white;
+    }
+
+    .btn-x1 {
+      background: linear-gradient(135deg, #00c2ff, #0057ff);
+      color: white;
+    }
+
+    .btn-sign {
+      background: linear-gradient(135deg, #fca311, #e07b00);
+      color: #0b132b;
+      font-size: 18px;
+      padding: 16px 20px;
+      margin-top: 8px;
+    }
+
+    .divider {
+      color: #4a5a7a;
+      font-size: 12px;
+      margin: 8px 0 16px;
+    }
+
+    .wallet-info {
+      background: #0d1e3d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #5a9fff;
+      margin-bottom: 16px;
+      word-break: break-all;
+      display: none;
+    }
+
+    .success {
+      color: #00e676;
+      font-size: 14px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .error {
+      color: #ff5252;
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+      word-break: break-all;
+    }
+
+    .tx-link {
+      color: #5a9fff;
+      font-size: 12px;
+      text-decoration: none;
+      display: none;
+      margin-top: 8px;
+    }
+
+    .network-badge {
+      display: inline-block;
+      background: #1a3a1a;
+      color: #00e676;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    footer {
+      margin-top: 24px;
+      color: #4a5a7a;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">🎯</div>
+  <h1>THEO Pools</h1>
+  <p class="subtitle">Sign your transaction to participate</p>
+  <div class="network-badge">🔴 X1 Testnet</div>
+
+  <div class="status-box" id="statusBox">
+    Loading transaction...
+  </div>
+
+  <div class="wallet-info" id="walletInfo"></div>
+
+  <button class="btn btn-backpack" id="btnBackpack" onclick="connectWallet('backpack')" disabled>
+    🎒 Connect Backpack
+  </button>
+
+  <button class="btn btn-x1" id="btnX1" onclick="connectWallet('x1')" disabled>
+    ⚡ Connect X1 Wallet
+  </button>
+
+  <div class="divider">— or —</div>
+
+  <button class="btn btn-sign" id="btnSign" onclick="signAndSend()" disabled>
+    🔏 Sign & Submit
+  </button>
+
+  <div class="success" id="successMsg">✅ Transaction submitted successfully!</div>
+  <a class="tx-link" id="txLink" target="_blank">View on Explorer →</a>
+  <div class="error" id="errorMsg"></div>
+</div>
+
+<footer>Non-custodial · Your keys, your THEO</footer>
+
+<script src="https://unpkg.com/@solana/web3.js@1.91.1/lib/index.iife.min.js"></script>
+<script>
+  const RPC_URL = "https://rpc.testnet.x1.xyz";
+  let connection;
+  let walletProvider = null;
+  let transactionBuffer = null;
+
+  // Parse ?tx= from URL
+  function getTxFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tx") || params.get("transaction");
+  }
+
+  function setStatus(msg, color) {
+    const box = document.getElementById("statusBox");
+    box.textContent = msg;
+    if (color) box.style.color = color;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("errorMsg");
+    el.textContent = "❌ " + msg;
+    el.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("errorMsg").style.display = "none";
+  }
+
+  window.onload = async function () {
+    connection = new solanaWeb3.Connection(RPC_URL, "confirmed");
+
+    const txParam = getTxFromUrl();
+    if (!txParam) {
+      setStatus("⚠️ No transaction found in URL. Open this page from the THEO Pools bot.", "#fca311");
+      return;
+    }
+
+    try {
+      const decoded = Uint8Array.from(atob(txParam), c => c.charCodeAt(0));
+      transactionBuffer = decoded;
+      setStatus("✅ Transaction loaded. Connect your wallet to sign.", "#00e676");
+      document.getElementById("btnBackpack").disabled = false;
+      document.getElementById("btnX1").disabled = false;
+    } catch (e) {
+      setStatus("❌ Failed to decode transaction.", "#ff5252");
+    }
+  };
+
+  async function connectWallet(type) {
+    hideError();
+    try {
+      let provider;
+
+      if (type === "backpack") {
+        if (!window.backpack && !window.xnft) {
+          showError("Backpack wallet not found. Please install the Backpack browser extension.");
+          return;
+        }
+        provider = window.backpack || window.xnft;
+      } else if (type === "x1") {
+        // X1 wallet uses window.solana or a custom provider
+        if (window.x1 && window.x1.isX1) {
+          provider = window.x1;
+        } else if (window.solana) {
+          provider = window.solana;
+        } else {
+          showError("X1 Wallet not found. Please install the X1 Wallet browser extension.");
+          return;
+        }
+      }
+
+      await provider.connect();
+      walletProvider = provider;
+
+      const pubkey = provider.publicKey.toString();
+      const short = pubkey.slice(0, 6) + "..." + pubkey.slice(-4);
+      document.getElementById("walletInfo").textContent = "Connected: " + pubkey;
+      document.getElementById("walletInfo").style.display = "block";
+      setStatus("✅ Wallet connected: " + short + " — Ready to sign!", "#00e676");
+      document.getElementById("btnSign").disabled = false;
+
+    } catch (e) {
+      showError("Failed to connect wallet: " + e.message);
+    }
+  }
+
+  async function signAndSend() {
+    if (!walletProvider || !transactionBuffer) return;
+    hideError();
+    document.getElementById("btnSign").disabled = true;
+    document.getElementById("btnSign").textContent = "⏳ Signing...";
+
+    try {
+      // Deserialize transaction
+      const tx = solanaWeb3.Transaction.from(transactionBuffer);
+
+      // Set fee payer
+      tx.feePayer = walletProvider.publicKey;
+
+      // Get fresh blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+
+      // Sign
+      document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
+      const signed = await walletProvider.signTransaction(tx);
+
+      // Send
+      document.getElementById("btnSign").textContent = "⏳ Submitting...";
+      const sig = await connection.sendRawTransaction(signed.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: "confirmed"
+      });
+
+      // Confirm
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+
+      document.getElementById("successMsg").style.display = "block";
+      const explorerUrl = "https://explorer.x1.xyz/tx/" + sig;
+      const txLink = document.getElementById("txLink");
+      txLink.href = explorerUrl;
+      txLink.style.display = "block";
+      document.getElementById("btnSign").textContent = "✅ Done!";
+      setStatus("🎉 Transaction confirmed! Signature: " + sig.slice(0, 20) + "...", "#00e676");
+
+    } catch (e) {
+      showError(e.message);
+      document.getElementById("btnSign").disabled = false;
+      document.getElementById("btnSign").textContent = "🔏 Sign & Submit";
+    }
+  }
+</script>
+
+</body>
+</html>
