@@ -227,7 +227,8 @@
     }
 
     try {
-      const decoded = Uint8Array.from(atob(txParam), c => c.charCodeAt(0));
+      const cleaned = txParam.replace(/ /g, '+');
+const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
       transactionBuffer = decoded;
       setStatus("✅ Transaction loaded. Connect your wallet to sign.", "#00e676");
       document.getElementById("btnBackpack").disabled = false;
