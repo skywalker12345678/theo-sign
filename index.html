@@ -285,17 +285,19 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
       tx.signatures = [];
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
-      const signed = await walletProvider.signTransaction(tx);
-      console.log("signed feePayer:", signed.feePayer?.toString());
-      console.log("signed blockhash:", signed.recentBlockhash);
-      console.log("sig bytes:", signed.signatures?.[0]?.signature);
-      document.getElementById("btnSign").textContent = "⏳ Submitting...";
-      // Serialize exactly what the wallet returned without modification
-      const rawTx = signed.serialize({ requireAllSignatures: false, verifySignatures: false });
-      const sig = await connection.sendRawTransaction(rawTx, {
-        skipPreflight: false,
-        preflightCommitment: "processed",
-      });
+      let sig;
+      if (walletProvider.isX1Wallet) {
+        // X1 wallet - use signAndSendTransaction
+        const { blockhash } = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = blockhash;
+        const result = await walletProvider.signAndSendTransaction(tx);
+        sig = typeof result === "string" ? result : result.signature;
+      } else {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = blockhash;
+        const signed = await walletProvider.signTransaction(tx);
+        sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
+      }
 
       document.getElementById("successMsg").style.display = "block";
       const explorerUrl = "https://explorer.x1.xyz/tx/" + sig;
