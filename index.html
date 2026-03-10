@@ -296,7 +296,7 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
         skipPreflight: true,
       });
 
-      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+     await connection.confirmTransaction(sig, "finalized");
 
       document.getElementById("successMsg").style.display = "block";
       const explorerUrl = "https://explorer.x1.xyz/tx/" + sig;
