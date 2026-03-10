@@ -282,7 +282,6 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
    try {
       const tx = solanaWeb3.Transaction.from(transactionBuffer);
       tx.feePayer = walletProvider.publicKey;
-      tx.signatures = [];
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
       let sig;
