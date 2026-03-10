@@ -286,9 +286,13 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
       const signed = await walletProvider.signTransaction(tx);
-
+      console.log("signed feePayer:", signed.feePayer?.toString());
+      console.log("signed blockhash:", signed.recentBlockhash);
+      console.log("sig bytes:", signed.signatures?.[0]?.signature);
       document.getElementById("btnSign").textContent = "⏳ Submitting...";
-      const sig = await connection.sendRawTransaction(signed.serialize(), {
+      // Serialize exactly what the wallet returned without modification
+      const rawTx = signed.serialize({ requireAllSignatures: false, verifySignatures: false });
+      const sig = await connection.sendRawTransaction(rawTx, {
         skipPreflight: false,
         preflightCommitment: "processed",
       });
