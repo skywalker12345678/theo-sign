@@ -249,17 +249,14 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
           return;
         }
         provider = window.backpack || window.xnft;
-      } else if (type === "x1") {
-        // X1 wallet uses window.solana or a custom provider
-        if (window.x1 && window.x1.isX1) {
-          provider = window.x1;
-        } else if (window.solana) {
-          provider = window.solana;
-        } else {
-          showError("X1 Wallet not found. Please install the X1 Wallet browser extension.");
-          return;
-        }
-      }
+    } else if (type === "x1") {
+  if (window.x1Wallet) {
+    provider = window.x1Wallet;
+  } else {
+    showError("X1 Wallet not found. Please install the X1 Wallet browser extension.");
+    return;
+  }
+}
 
       await provider.connect();
       walletProvider = provider;
