@@ -280,21 +280,28 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
     document.getElementById("btnSign").textContent = "⏳ Signing...";
 
    try {
-      const tx = solanaWeb3.Transaction.from(transactionBuffer);
-      tx.feePayer = walletProvider.publicKey;
+      const cleaned = transactionBuffer;
+      const legacyTx = solanaWeb3.Transaction.from(cleaned);
+
+      const { blockhash } = await connection.getLatestBlockhash("confirmed");
+
+      const messageV0 = new solanaWeb3.TransactionMessage({
+        payerKey: walletProvider.publicKey,
+        recentBlockhash: blockhash,
+        instructions: legacyTx.instructions,
+      }).compileToV0Message();
+
+      const versionedTx = new solanaWeb3.VersionedTransaction(messageV0);
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
+
       let sig;
       if (walletProvider.isX1Wallet) {
-        // X1 wallet - use signAndSendTransaction
-        const { blockhash } = await connection.getLatestBlockhash("confirmed");
-        tx.recentBlockhash = blockhash;
-        const result = await walletProvider.signAndSendTransaction(tx);
+        const result = await walletProvider.signAndSendTransaction(versionedTx);
         sig = typeof result === "string" ? result : result.signature;
       } else {
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-        tx.recentBlockhash = blockhash;
-        const signed = await walletProvider.signTransaction(tx);
+        const { blockhash: bh, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+        const signed = await walletProvider.signTransaction(versionedTx);
         sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
       }
 
@@ -304,7 +311,7 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
       txLink.href = explorerUrl;
       txLink.style.display = "block";
       document.getElementById("btnSign").textContent = "✅ Sent!";
-      setStatus("🎉 Transaction sent! Click below to verify on explorer.", "#00e676");
+      setStatus("🎉 Transaction sent! Click below to verify.", "#00e676");
 
     } catch (e) {
       showError(e.message);
