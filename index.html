@@ -289,7 +289,8 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
 
       document.getElementById("btnSign").textContent = "⏳ Submitting...";
       const sig = await connection.sendRawTransaction(signed.serialize(), {
-        skipPreflight: true,
+        skipPreflight: false,
+        preflightCommitment: "processed",
       });
 
       document.getElementById("successMsg").style.display = "block";
