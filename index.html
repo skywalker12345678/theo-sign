@@ -280,31 +280,31 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
     document.getElementById("btnSign").textContent = "⏳ Signing...";
 
     try {
-      // Deserialize transaction
-const tx = solanaWeb3.Transaction.from(transactionBuffer);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
 
-// Override fee payer and blockhash with connected wallet
-tx.feePayer = walletProvider.publicKey;
+      // Try legacy transaction first
+      const tx = solanaWeb3.Transaction.from(transactionBuffer);
+      tx.feePayer = walletProvider.publicKey;
+      tx.recentBlockhash = blockhash;
+      tx.signatures = [];
 
-// Get fresh blockhash
-const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-tx.recentBlockhash = blockhash;
-
-// Clear any existing signatures so wallet signs fresh
-tx.signatures = [];
-
-      // Sign
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
-      const signed = await walletProvider.signTransaction(tx);
 
-      // Send
-      document.getElementById("btnSign").textContent = "⏳ Submitting...";
-      const sig = await connection.sendRawTransaction(signed.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: "confirmed"
-      });
+      let sig;
 
-      // Confirm
+      // Some wallets (X1) prefer signAndSendTransaction over signTransaction
+      if (walletProvider.signAndSendTransaction) {
+        const result = await walletProvider.signAndSendTransaction(tx);
+        sig = result.signature || result;
+      } else {
+        const signed = await walletProvider.signTransaction(tx);
+        document.getElementById("btnSign").textContent = "⏳ Submitting...";
+        sig = await connection.sendRawTransaction(signed.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: "confirmed"
+        });
+      }
+
       await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
 
       document.getElementById("successMsg").style.display = "block";
