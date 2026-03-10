@@ -281,14 +281,17 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
 
     try {
       // Deserialize transaction
-      const tx = solanaWeb3.Transaction.from(transactionBuffer);
+const tx = solanaWeb3.Transaction.from(transactionBuffer);
 
-      // Set fee payer
-      tx.feePayer = walletProvider.publicKey;
+// Override fee payer and blockhash with connected wallet
+tx.feePayer = walletProvider.publicKey;
 
-      // Get fresh blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
+// Get fresh blockhash
+const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+tx.recentBlockhash = blockhash;
+
+// Clear any existing signatures so wallet signs fresh
+tx.signatures = [];
 
       // Sign
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
