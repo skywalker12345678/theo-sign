@@ -279,14 +279,10 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
     document.getElementById("btnSign").disabled = true;
     document.getElementById("btnSign").textContent = "⏳ Signing...";
 
-    try {
+   try {
       const tx = solanaWeb3.Transaction.from(transactionBuffer);
       tx.feePayer = walletProvider.publicKey;
       tx.signatures = [];
-
-      // Get fresh blockhash BEFORE signing
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
       const signed = await walletProvider.signTransaction(tx);
@@ -296,15 +292,13 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
         skipPreflight: true,
       });
 
-     await connection.confirmTransaction(sig, "finalized");
-
       document.getElementById("successMsg").style.display = "block";
       const explorerUrl = "https://explorer.x1.xyz/tx/" + sig;
       const txLink = document.getElementById("txLink");
       txLink.href = explorerUrl;
       txLink.style.display = "block";
-      document.getElementById("btnSign").textContent = "✅ Done!";
-      setStatus("🎉 Transaction confirmed! Signature: " + sig.slice(0, 20) + "...", "#00e676");
+      document.getElementById("btnSign").textContent = "✅ Sent!";
+      setStatus("🎉 Transaction sent! Click below to verify on explorer.", "#00e676");
 
     } catch (e) {
       showError(e.message);
