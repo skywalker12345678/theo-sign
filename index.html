@@ -293,9 +293,10 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
       let sig;
 
       // Some wallets (X1) prefer signAndSendTransaction over signTransaction
-      if (walletProvider.signAndSendTransaction) {
+     if (walletProvider.signAndSendTransaction) {
         const result = await walletProvider.signAndSendTransaction(tx);
-        sig = result.signature || result;
+        console.log("signAndSendTransaction result:", JSON.stringify(result));
+        sig = result.signature || result.publicKey || result;
       } else {
         const signed = await walletProvider.signTransaction(tx);
         document.getElementById("btnSign").textContent = "⏳ Submitting...";
