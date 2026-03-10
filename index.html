@@ -290,21 +290,14 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
 
       document.getElementById("btnSign").textContent = "⏳ Awaiting signature...";
 
-      let sig;
-
-      // Some wallets (X1) prefer signAndSendTransaction over signTransaction
-     if (walletProvider.signAndSendTransaction) {
-        const result = await walletProvider.signAndSendTransaction(tx);
-        console.log("signAndSendTransaction result:", JSON.stringify(result));
-        sig = result.signature || result.publicKey || result;
-      } else {
-        const signed = await walletProvider.signTransaction(tx);
-        document.getElementById("btnSign").textContent = "⏳ Submitting...";
-        sig = await connection.sendRawTransaction(signed.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: "confirmed"
-        });
-      }
+     let sig;
+      // Always use signTransaction + manual send so we control the RPC endpoint
+      const signed = await walletProvider.signTransaction(tx);
+      document.getElementById("btnSign").textContent = "⏳ Submitting...";
+      sig = await connection.sendRawTransaction(signed.serialize(), {
+        skipPreflight: true,
+        preflightCommitment: "confirmed"
+      });
 
       await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
 
