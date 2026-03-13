@@ -302,7 +302,7 @@ const decoded = Uint8Array.from(atob(cleaned), c => c.charCodeAt(0));
       } else {
         const { blockhash: bh, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
         const signed = await walletProvider.signTransaction(versionedTx);
-        sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
+        sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
       }
 
       document.getElementById("successMsg").style.display = "block";
